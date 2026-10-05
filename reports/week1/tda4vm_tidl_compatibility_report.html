@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDA4VM TIDL 호환성 검토</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c2330;
+    --muted: #5a6475;
+    --line: #cfd6e3;
+    --head: #e8edf6;
+    --brand: #1f3f73;
+    --brand-2: #2f63b0;
+    --soft: #f3f6fb;
+    --hi: #b42318; --hi-bg: #fdecea;
+    --md: #8a5300; --md-bg: #fff2d9;
+    --lo: #1d6b3a; --lo-bg: #e4f3e9;
+  }
+  @page { size: A4; margin: 15mm 14mm 17mm 14mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: #ffffff; color: var(--ink);
+    font-family: 'Noto Sans KR', sans-serif; font-size: 9.3pt; line-height: 1.62;
+    word-break: keep-all; overflow-wrap: anywhere;
+  }
+  code, .mono { font-family: 'JetBrains Mono', monospace; font-size: 7.9pt; }
+  code { background: #eef1f6; padding: 0 3px; border-radius: 3px; word-break: break-all; }
+  h1, h2, h3, h4 { color: var(--brand); line-height: 1.35; margin: 0; }
+  h2 { font-size: 15pt; padding: 0 0 5px; border-bottom: 2px solid var(--brand); margin: 0 0 10px; }
+  h3 { font-size: 11.4pt; margin: 16px 0 6px; }
+  h2, h3, h4 { break-after: avoid; }
+  h4 { font-size: 9.8pt; margin: 12px 0 4px; color: var(--ink); }
+  p { margin: 0 0 7px; }
+  ul, ol { margin: 0 0 8px; padding-left: 18px; }
+  li { margin: 1px 0; }
+  .section { break-before: page; }
+  .avoid { break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 8.1pt; line-height: 1.48; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 3px 6px; vertical-align: top; text-align: left; }
+  thead th { background: var(--head); color: var(--brand); font-weight: 700; }
+  td.c, th.c { text-align: center; }
+  .callout { border-left: 4px solid var(--brand-2); background: var(--soft); padding: 8px 12px; margin: 8px 0 12px; break-inside: avoid; }
+  .callout.warn { border-left-color: var(--hi); background: #fdf3f2; }
+  .callout.note { border-left-color: #6b7a90; background: #f5f6f8; }
+  .callout b.t { display: block; color: var(--brand); margin-bottom: 3px; }
+  .callout.warn b.t { color: var(--hi); }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 7.4pt; font-weight: 700; line-height: 1.6; white-space: nowrap; }
+  .H { color: var(--hi); background: var(--hi-bg); }
+  .M { color: var(--md); background: var(--md-bg); }
+  .L { color: var(--lo); background: var(--lo-bg); }
+  .ok { color: var(--lo); font-weight: 700; }
+  .ng { color: var(--hi); font-weight: 700; }
+  .cond { color: var(--md); font-weight: 700; }
+  .small { font-size: 7.8pt; color: var(--muted); }
+  .src { font-size: 7.4pt; color: var(--muted); }
+  figure { margin: 8px 0 12px; break-inside: avoid; }
+  figcaption { font-size: 7.8pt; color: var(--muted); text-align: center; margin-top: 3px; }
+  svg text { font-family: 'Noto Sans KR', sans-serif; }
+
+  /* cover */
+  .cover { height: 262mm; display: flex; flex-direction: column; }
+  .cover .band { border-top: 6px solid var(--brand); padding-top: 26mm; }
+  .cover .kicker { color: var(--brand-2); font-weight: 700; letter-spacing: 0.04em; font-size: 9.5pt; }
+  .cover h1 { font-size: 23pt; margin: 6px 0 8px; color: var(--ink); }
+  .cover .sub { font-size: 11pt; color: var(--muted); margin-bottom: 14mm; }
+  .cover table { font-size: 8.8pt; }
+  .cover th { width: 26%; background: var(--head); color: var(--brand); }
+  .cover .toc { margin-top: 8mm; columns: 2; column-gap: 10mm; font-size: 8.8pt; }
+  .cover .toc div { break-inside: avoid; margin-bottom: 2px; }
+  .cover .foot { margin-top: auto; font-size: 7.8pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 6px; }
+
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .find { counter-reset: f; }
+  .find > div { break-inside: avoid; border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px 6px 34px; margin-bottom: 6px; position: relative; }
+  .find > div::before { counter-increment: f; content: counter(f); position: absolute; left: 9px; top: 7px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 8pt; font-weight: 700; text-align: center; line-height: 18px; }
+  .find b.h { color: var(--brand); }
+  .act { color: var(--brand-2); font-weight: 500; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps li { counter-increment: s; padding-left: 26px; position: relative; margin-bottom: 4px; break-inside: avoid; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 3px; background: var(--brand-2); color: #fff; font-size: 7.8pt; font-weight: 700; text-align: center; line-height: 18px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<div class="cover">
+  <div class="band">
+    <div class="kicker">1주차 기술 검토 · TOPIC 2 / TOPIC 3</div>
+    <h1>TDA4VM TIDL 모델 호환성 검토 보고서</h1>
+    <div class="sub">Quantization(양자화) 지원 모델·Runtime(런타임) 조사 및 SK-TDA4VM 보드 호환성 Risk(위험 요소) 점검</div>
+    <table>
+      <tr><th>과제</th><td>차량용 임베디드 플랫폼 기반 영상·IMU(Inertial Measurement Unit, 관성측정장치) 융합 딜레마존 통과 판정 시스템 개발</td></tr>
+      <tr><th>대상 보드</th><td>SK-TDA4VM (SoC(System on Chip): TDA4VM = J721E 계열)</td></tr>
+      <tr><th>기준 소프트웨어</th><td>Processor SDK(Software Development Kit) Linux 11.00.00.08 / edgeai-tidl-tools tag <code>11_00_06_00</code> / <code>SOC=am68pa</code></td></tr>
+      <tr><th>검토 범위</th><td>Topic 2 — TIDL(TI Deep Learning)이 지원하는 Runtime·Framework(학습 프레임워크)·Quantization 지원 모델 조사<br>Topic 3 — 모델↔보드 호환성 Risk, 모델·보드 요구사항, Batch(배치) 적용 시 불일치 지점 점검</td></tr>
+      <tr><th>작성일</th><td>2026-10-05</td></tr>
+    </table>
+    <div class="toc">
+      <div><b>0.</b> 핵심 결론 요약</div>
+      <div><b>1.</b> 검토 기준과 근거 자료</div>
+      <div><b>2.</b> [Topic 2] TIDL Runtime·Framework·지원 모델</div>
+      <div>&nbsp;&nbsp;2.1 동작 구조 · 2.2 Runtime 종류</div>
+      <div>&nbsp;&nbsp;2.3 Framework 매칭과 Customizing 지점</div>
+      <div>&nbsp;&nbsp;2.4 저장소 예제 모델 · 2.5 TI Model Zoo</div>
+      <div>&nbsp;&nbsp;2.6 Quantization 지원 · 2.7 Operator 지원</div>
+      <div><b>3.</b> [Topic 3] 보드 호환성 Risk 점검</div>
+      <div>&nbsp;&nbsp;3.1 보드 요구사항 · 3.2 모델 요구사항</div>
+      <div>&nbsp;&nbsp;3.3 Risk 목록 · 3.4 Batch 불일치 점검</div>
+      <div>&nbsp;&nbsp;3.5 과제 모델 적용 · 3.6 검증 절차 · 3.7 버전 선택</div>
+      <div><b>4.</b> 결론 및 다음 작업</div>
+      <div><b>부록</b> A. Operator 목록 · B. Compile Option · C. 참고 문서</div>
+    </div>
+  </div>
+  <div class="foot">근거: TexasInstruments/edgeai-tidl-tools (tag 11_00_06_00 문서·예제 코드, 비교용 11_00_08_00 · 11_01_xx · 11_02_xx), TexasInstruments/edgeai-tensorlab (branch r11.0: edgeai-modelzoo, edgeai-benchmark), TI TDA4VM 제품 정보, 과제 수행계획서. 심각도(High/Medium/Low)는 문서 근거를 바탕으로 한 검토자 판단이다.</div>
+</div>
+
+<!-- ===================== 0. SUMMARY ===================== -->
+<div class="section">
+<h2>0. 핵심 결론 요약</h2>
+<p>edgeai-tidl-tools <code>11_00_06_00</code> tag의 문서·예제 코드를 기준으로, SK-TDA4VM(<code>am68pa</code>)에서 영상·IMU 융합 모델을 TIDL로 가속할 때 결정해야 할 사항과 미리 차단해야 할 Risk를 정리했다.</p>
+<div class="find">
+  <div><b class="h">Runtime 선택 — ONNX Runtime 경로 권장.</b> TIDL은 OSRT(Open Source Runtime) 3종(ONNX Runtime, TFLite Runtime, TVM/Neo-AI DLR(Deep Learning Runtime))과 그 하위 계층인 TIDL-RT(C API)를 제공한다. Operator(연산자) 매핑 표와 공식 예제가 갖춰진 경로는 <b>ONNX Runtime</b>과 <b>TFLite Runtime</b> 2가지다. 과제 모델은 PyTorch 학습·2-input 구조이고, TI Model Zoo 검출 모델과 Transformer 지원이 ONNX 중심이므로 ONNX Runtime + TIDL Execution Provider를 기본 경로로 둔다.<br><span class="act">→ PyTorch → ONNX(opset ≤ 19, 고정 shape) → onnxruntime_tidl 1.15.0</span></div>
+  <div><b class="h">TDA4VM 전용 Quantization 제약.</b> TDA4VM(AM68PA)은 Symmetric(대칭) PTQ(Post-Training Quantization, 학습 후 양자화) 8/16-bit와 Mixed Precision(혼합 정밀도), ONNX QDQ(Quantize-Dequantize) 모델, QAT(Quantization Aware Training, 양자화 인지 학습)를 지원한다. 반면 <b>Asymmetric(비대칭)·Per-channel 양자화(<code>quantization_scale_type=4</code>)와 TFLite INT8 모델 직접 import(<code>=3</code>)는 지원하지 않는다.</b><br><span class="act">→ 다른 SoC(AM62A/AM68A/AM69A) 예제의 양자화 설정을 그대로 복사하지 않는다.</span></div>
+  <div><b class="h">IMU 분기의 LSTM/GRU는 가속 불가.</b> LSTM·GRU·RNN은 <code>11_00_06_00</code> 지원 Operator 목록에 없어 Cortex-A72(ARM)에서 실행된다. 이 Operator들은 <code>11_02_16_00</code>부터 목록에 추가되었으나, 이를 포함한 tools(<code>11_02_16/17/20/21_00</code>) 중 SDK 11.00에 적용 가능한 패치는 J784S4 ADAS SDK 전용뿐이다. 즉 TDA4VM + SDK 11.00 조합에서는 사용할 수 없고, 최소 SDK 11.01 + <code>11_02_17_00</code>이 필요하다.<br><span class="act">→ IMU 시계열 분기는 Conv(1×k)·Gemm(완전연결) 기반으로 설계한다.</span></div>
+  <div><b class="h">Batch는 1로 고정해 배포.</b> TDA4VM은 C7x DSP(Digital Signal Processor)+MMA(Matrix Multiply Accelerator)가 1개이므로 multi-core Batch 모드(<code>inference_mode</code> 1/2)가 해당되지 않는다. 단일 DSP의 Batch 내부 최적화는 “매우 작은 해상도”에서만 적용되고, Slice는 batch=1만, Concat은 batch 축 불가, Add/Mul broadcasting은 batch 축 제외 등 Operator 제약이 있다.<br><span class="act">→ 시간 축은 Batch가 아니라 W(width) 또는 C(channel) 축에 배치한다.</span></div>
+  <div><b class="h">검출(신호 인식) 후보는 TI Model Zoo의 YOLOX-lite.</b> edgeai-modelzoo r11.0의 YOLOX-nano/tiny/s-lite는 TIDL 후처리 가속(<code>meta_arch_type=6</code>)과 prototxt가 제공된다. 이름에 <code>gplv3</code>가 붙은 YOLOv5/v6/v7/v8 변형은 shortlist에서 제외되어 있고, 라이선스 의무 검토가 필요하다.</div>
+  <div><b class="h">버전 고정이 최우선 Risk 관리 항목.</b> GitHub master(현재 <code>11_02_20_00</code>) 문서는 <code>11_00_06_00</code>과 지원 기능이 다르다. Tools(컴파일 도구)와 보드 Firmware 버전이 다르면 Artifact(컴파일 산출물)가 실행되지 않는다.<br><span class="act">→ 판단 근거는 tag 문서만 사용하고, compile 설정·버전을 실험 기록에 함께 남긴다.</span></div>
+</div>
+</div>
+
+<!-- ===================== 1. BASIS ===================== -->
+<div class="section">
+<h2>1. 검토 기준과 근거 자료</h2>
+<h3>1.1 기준 버전 조합</h3>
+<table>
+  <thead><tr><th style="width:24%">항목</th><th style="width:38%">값</th><th>근거</th></tr></thead>
+  <tbody>
+    <tr><td>보드 SoC 환경 변수</td><td><code>SOC=am68pa</code> (J721E(TDA4VM) → am68pa, <code>j721e</code> 입력 시 am68pa로 변환)</td><td>README.md “Supported Devices”, setup.sh</td></tr>
+    <tr><td>Tools ↔ SDK 호환</td><td><code>11_00_06_00</code> ↔ Processor SDK Linux 11.00.00.08 / RTOS 11.00.00.06 (Default 호환)</td><td>docs/version_compatibility_table.md</td></tr>
+    <tr><td>C7x Firmware 기본값</td><td><code>advanced_options:c7x_firmware_version = "11_00_00_00"</code></td><td>examples/osrt_python/README.md</td></tr>
+    <tr><td>Compile 호스트</td><td>x86 PC, Ubuntu 22.04, Python 3.10 (Docker 권장). Compile은 보드에서 불가</td><td>README.md “Pre-requisites”, 지원 기능 표</td></tr>
+    <tr><td>OSRT 패키지 (x86)</td><td>onnxruntime_tidl 1.15.0, tflite_runtime 2.12.0, tvm 0.12.0, dlr 1.13.0</td><td>setup.sh (REL=11_00_06_00)</td></tr>
+    <tr><td>Python 의존성</td><td>onnx 1.14.0, numpy 1.23.0, protobuf 3.20.3, flatbuffers 1.12.0</td><td>requirements_pc.txt</td></tr>
+    <tr><td>검증된 모델 형식</td><td>ONNX 1.14.0, ONNX Runtime 1.15.0 (OPSET-19), TFLite (TensorFlow 2.12.0)</td><td>docs/supported_ops_rts_versions.md</td></tr>
+  </tbody>
+</table>
+
+<h3>1.2 참고한 자료와 사용 방식</h3>
+<table>
+  <thead><tr><th style="width:30%">자료</th><th style="width:22%">버전</th><th>사용 목적</th></tr></thead>
+  <tbody>
+    <tr><td>edgeai-tidl-tools 문서·예제 코드</td><td>tag <code>11_00_06_00</code></td><td><b>판단 기준</b>. 지원 Operator, Quantization, Batch, 디버깅 절차</td></tr>
+    <tr><td>edgeai-tidl-tools 문서</td><td>tag <code>11_00_08_00</code></td><td>같은 SDK용 패치 버전의 문서 정정 사항 확인</td></tr>
+    <tr><td>edgeai-tidl-tools 문서</td><td><code>11_01_xx</code>, <code>11_02_xx</code> (master = <code>11_02_20_00</code>)</td><td>이후 버전에서 추가된 기능 식별(“현재 버전에서 불가” 판단용), 공통 오류 유형</td></tr>
+    <tr><td>edgeai-tensorlab (edgeai-modelzoo, edgeai-benchmark)</td><td>branch <code>r11.0</code></td><td>TDA4VM 대상 사전 학습 모델, 검출 모델 구성, shortlist 정보</td></tr>
+    <tr><td>TI TDA4VM 제품 정보</td><td>—</td><td>하드웨어 연산 자원(코어 수·클럭·TOPS)</td></tr>
+    <tr><td>과제 수행계획서</td><td>—</td><td>과제 모델 구성(영상·IMU 융합, 신호 인식, 도달시간 예측), 기준 SW 버전</td></tr>
+  </tbody>
+</table>
+<div class="callout warn"><b class="t">주의: GitHub 기본 브랜치 문서와 사용 버전 문서가 다르다</b>
+GitHub에서 저장소를 열면 master(<code>11_02_20_00</code>) 문서가 표시된다. 이 문서에는 LSTM/GRU/RNN, 비교 연산(Where/Less/Greater 등), ReduceSum, Expand 등 <code>11_00_06_00</code>에 없는 Operator가 포함되어 있고, 디렉터리 구조(<code>docs/operators.md</code>, <code>runtimes/</code>, <code>model-tools/</code>)도 다르다. 기능 판단은 반드시 <code>git checkout 11_00_06_00</code> 후의 문서로 한다.</div>
+</div>
+
+<!-- ===================== 2. TOPIC 2 ===================== -->
+<div class="section">
+<h2>2. [Topic 2] TIDL Runtime·Framework·Quantization 지원 모델</h2>
+
+<h3>2.1 TIDL 동작 구조</h3>
+<p>TIDL은 학습이 끝난 모델 파일(<code>.onnx</code>, <code>.tflite</code>)을 x86 PC에서 Compile(분석·양자화·메모리 계획)하여 Artifact를 만들고, 보드에서는 OSRT가 이 Artifact를 읽어 지원되는 부분을 C7x DSP + MMA로 Offload(가속기 할당)한다. 지원되지 않는 Operator는 같은 OSRT가 Cortex-A72에서 실행한다(Heterogeneous Execution, 이종 실행). 지원 Operator가 연속된 구간 하나가 Subgraph(부분 그래프) 하나가 된다.</p>
+<figure>
+<svg viewBox="0 0 720 250" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TIDL compile and inference flow">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f63b0"/></marker></defs>
+  <g font-size="11">
+    <rect x="8" y="20" width="130" height="58" rx="6" fill="#f3f6fb" stroke="#2f63b0"/>
+    <text x="73" y="44" text-anchor="middle" font-weight="700" fill="#1f3f73">학습 Framework</text>
+    <text x="73" y="62" text-anchor="middle" fill="#1c2330">PyTorch / TensorFlow</text>
+    <rect x="166" y="20" width="120" height="58" rx="6" fill="#f3f6fb" stroke="#2f63b0"/>
+    <text x="226" y="44" text-anchor="middle" font-weight="700" fill="#1f3f73">모델 파일</text>
+    <text x="226" y="62" text-anchor="middle" fill="#1c2330">.onnx / .tflite</text>
+    <rect x="314" y="8" width="214" height="104" rx="6" fill="#e8edf6" stroke="#1f3f73" stroke-width="1.4"/>
+    <text x="421" y="28" text-anchor="middle" font-weight="700" fill="#1f3f73">x86 PC: OSRT + TIDL Compile</text>
+    <text x="421" y="50" text-anchor="middle" fill="#1c2330">① Parsing (지원 Operator 판별)</text>
+    <text x="421" y="68" text-anchor="middle" fill="#1c2330">② Calibration · Quantization</text>
+    <text x="421" y="86" text-anchor="middle" fill="#1c2330">③ Memory Planning</text>
+    <text x="421" y="104" text-anchor="middle" font-size="9.5" fill="#5a6475">tidl_tools (SoC별), SOC=am68pa</text>
+    <rect x="556" y="20" width="156" height="58" rx="6" fill="#f3f6fb" stroke="#2f63b0"/>
+    <text x="634" y="44" text-anchor="middle" font-weight="700" fill="#1f3f73">model-artifacts</text>
+    <text x="634" y="62" text-anchor="middle" fill="#1c2330">*_tidl_net.bin, *_io_1.bin …</text>
+    <rect x="314" y="138" width="214" height="34" rx="6" fill="#ffffff" stroke="#8a95a8" stroke-dasharray="4 3"/>
+    <text x="421" y="160" text-anchor="middle" fill="#1c2330">Calibration 입력 데이터 (대표 프레임)</text>
+    <rect x="8" y="150" width="270" height="88" rx="6" fill="#ffffff" stroke="#8a95a8"/>
+    <text x="143" y="172" text-anchor="middle" font-weight="700" fill="#1f3f73">x86 Host Emulation 추론 (선택)</text>
+    <text x="143" y="192" text-anchor="middle" fill="#1c2330">기능·정확도 확인용, bit-exact 비교 기준</text>
+    <text x="143" y="210" text-anchor="middle" fill="#5a6475" font-size="9.5">성능(지연·FPS) 측정 불가</text>
+    <rect x="556" y="118" width="156" height="124" rx="6" fill="#e8edf6" stroke="#1f3f73" stroke-width="1.4"/>
+    <text x="634" y="138" text-anchor="middle" font-weight="700" fill="#1f3f73">SK-TDA4VM 추론</text>
+    <text x="634" y="156" text-anchor="middle" font-size="10" fill="#1c2330">OSRT + TIDL EP/Delegate</text>
+    <rect x="566" y="166" width="136" height="32" rx="4" fill="#ffffff" stroke="#2f63b0"/>
+    <text x="634" y="186" text-anchor="middle" font-size="10" fill="#1c2330">C7x DSP + MMA: Subgraph</text>
+    <rect x="566" y="204" width="136" height="32" rx="4" fill="#ffffff" stroke="#8a95a8"/>
+    <text x="634" y="224" text-anchor="middle" font-size="10" fill="#1c2330">Cortex-A72: 미지원 Operator</text>
+  </g>
+  <g stroke="#2f63b0" stroke-width="1.6" fill="none">
+    <line x1="138" y1="49" x2="164" y2="49" marker-end="url(#ar)"/>
+    <line x1="286" y1="49" x2="312" y2="49" marker-end="url(#ar)"/>
+    <line x1="528" y1="49" x2="554" y2="49" marker-end="url(#ar)"/>
+    <line x1="421" y1="138" x2="421" y2="114" marker-end="url(#ar)"/>
+    <line x1="634" y1="78" x2="634" y2="116" marker-end="url(#ar)"/>
+    <path d="M556,70 C470,130 330,120 280,170" marker-end="url(#ar)"/>
+  </g>
+</svg>
+<figcaption>그림 1. TIDL Compile(x86) → Artifact → 추론(PC Host Emulation 또는 보드) 흐름 (README.md, examples/osrt_python/README.md 기반 재구성)</figcaption>
+</figure>
+<ul>
+  <li>Compile은 x86에서만 가능하다. 보드는 Inference(추론)만 수행한다(README.md 지원 기능 표).</li>
+  <li>Host Emulation은 C7x 동작을 PC에서 재현하는 기능 확인 단계다. Layer별 실행 cycle은 보드에서 <code>debug_level=1</code>일 때만 출력된다(docs/tidl_osr_debug.md).</li>
+  <li>Compile 결과로 <code>tempDir/runtimes_visualization.svg</code>가 생성되며, 어떤 노드가 C7x로, 어떤 노드가 ARM으로 배정되었는지 확인할 수 있다.</li>
+</ul>
+
+<h3>2.2 Runtime 종류와 사용 API</h3>
+<table>
+  <thead><tr><th style="width:13%">Runtime</th><th style="width:10%">입력 모델</th><th style="width:27%">Compile (x86)</th><th style="width:23%">가속 추론 (PC/보드)</th><th>11_00_06_00 비고</th></tr></thead>
+  <tbody>
+    <tr><td><b>ONNX Runtime</b><br><span class="small">(ORT)</span></td><td>.onnx</td><td>providers =<br><code>['TIDLCompilationProvider', 'CPUExecutionProvider']</code></td><td>providers =<br><code>['TIDLExecutionProvider', 'CPUExecutionProvider']</code></td><td>onnxruntime_tidl 1.15.0 (OPSET-19). Vision Transformer는 ONNX만 지원. 예제: <code>examples/osrt_python/ort/onnxrt_ep.py</code></td></tr>
+    <tr><td><b>TFLite Runtime</b></td><td>.tflite</td><td><code>tflite.load_delegate('tidl_model_import_tflite.so', options)</code></td><td><code>tflite.load_delegate('libtidl_tfl_delegate.so', options)</code></td><td>tflite_runtime 2.12.0, 입력 layout NHWC. 예제: <code>examples/osrt_python/tfl/tflrt_delegate.py</code></td></tr>
+    <tr><td>TVM / Neo-AI DLR</td><td>.onnx / .tflite → Relay</td><td><code>tidl.TIDLCompiler(platform="J7", …)</code> + <code>relay.build</code></td><td>DLR</td><td>tvm 0.12.0 / dlr 1.13.0. <code>deny_list:layer_type</code> 미지원, <code>c7x_codegen</code>은 제한적 검증</td></tr>
+    <tr><td>TIDL-RT (C API)</td><td>OSRT Compile 결과</td><td>(별도 compile 없음, 위 OSRT로 생성)</td><td><code>TIDLRT_create / invoke</code></td><td><b>전체 Offload된 모델만</b> 실행. <code>add_data_convert_ops=3</code>으로 compile 필요. ORT compile 시 출력 순서는 <code>onnxrtMetaData.txt</code></td></tr>
+  </tbody>
+</table>
+<div class="callout"><b class="t">“2가지 Runtime”의 실제 의미</b>
+지원 Operator 매핑 표(docs/supported_ops_rts_versions.md)는 <b>ONNX</b>용과 <b>TFLite</b>용 두 가지만 있다. 즉 모델을 넣을 수 있는 실질적인 입구는 ONNX Runtime과 TFLite Runtime이며, 모델의 학습 Framework는 이 두 형식 중 하나로 내보낼 수 있어야 한다. TVM/DLR은 보조 경로이고, TIDL-RT는 두 Runtime이 내부적으로 호출하는 하위 계층(C API)이다.</div>
+
+<h3>2.3 Framework ↔ Runtime 매칭과 Code Customizing 지점</h3>
+<table>
+  <thead><tr><th style="width:17%">학습 Framework</th><th style="width:30%">변환 경로</th><th style="width:13%">대상 Runtime</th><th>주의 사항</th></tr></thead>
+  <tbody>
+    <tr><td>PyTorch</td><td><code>torch.onnx.export</code>(고정 입력 shape, opset ≤ 19) → onnxsim/Shape Inference → (필요 시) tidl-onnx-model-optimizer</td><td>ONNX Runtime</td><td>dynamic axes 미사용. ONNX Runtime 1.15.0이 OPSET-19까지 검증. Constant tensor가 있는 Add/Mul 등은 shape inference가 되어 있어야 함</td></tr>
+    <tr><td>TensorFlow / Keras</td><td>TFLiteConverter로 <b>float32</b> 모델 export</td><td>TFLite Runtime</td><td>TFLite full-integer(INT8) 모델 직접 import는 TDA4VM 미지원 → float 모델을 넘기고 TIDL PTQ 사용</td></tr>
+    <tr><td>edgeai-mmdetection (TI fork)</td><td>ONNX + prototxt(Object Detection Meta Architecture)</td><td>ONNX Runtime</td><td>TI Model Zoo 검출 모델의 표준 경로. 후처리 가속 사용 가능</td></tr>
+    <tr><td>Caffe</td><td>edgeai-caffe2onnx (requirements_pc.txt 포함) → ONNX</td><td>ONNX Runtime</td><td>예제 config(<code>cl-ort-caffe_*</code>)만 존재, 신규 개발에는 비권장</td></tr>
+    <tr><td>Ultralytics YOLO 원본</td><td>ONNX export 가능</td><td>ONNX Runtime</td><td>TIDL 친화 구조(“lite”)가 아님. 후처리·활성 함수 등 구조 변경 또는 TI 변형 사용 필요</td></tr>
+  </tbody>
+</table>
+<h4>Code Customizing이 필요한 경우</h4>
+<ul>
+  <li><b>미지원 Operator 대체</b>: <code>osrt-model-tools/.../tidl_onnx_model_optimizer</code>의 변환 규칙(예: <code>convert_resize_params_size_to_scale</code>, <code>convert_maxpool_to_cascaded_maxpool</code>, <code>convert_softmax_axis_*</code>, <code>convert_gemm_to_matmul_and_add</code>, <code>expand_layernorm_to_component_ops</code>) 또는 onnx-graphsurgeon으로 Graph(계산 그래프) 수정.</li>
+  <li><b>Offload 범위 조정</b>: <code>deny_list:layer_type</code>, <code>deny_list:layer_name</code>, <code>allow_list:layer_name</code>(실험적)로 특정 Operator를 ARM/C7x에 강제 배정.</li>
+  <li><b>다중 입력·비영상 입력 추론 코드</b>: 저장소 예제(<code>onnxrt_ep.py</code>, <code>tflrt_delegate.py</code>)는 분류·검출·분할의 단일 이미지 입력을 전제로 한다. 영상+IMU 2-input 모델은 docs/custom_model_evaluation.md의 “Custom Model Evaluation” 절차로 별도 추론 스크립트를 작성해야 한다.</li>
+  <li><b>전처리·후처리</b>: 입력 정규화(mean/scale)·layout 변환을 모델 안에 넣거나(<code>add_data_convert_ops</code>, 실험적) 애플리케이션에서 구현. 검출 후처리는 Meta Architecture(prototxt)로 TIDL에서 처리하거나 ARM에서 구현.</li>
+</ul>
+</div>
+
+<div>
+<h3>2.4 저장소 예제 모델 (11_00_06_00, <code>SOC=am68pa</code> 기준)</h3>
+<p><code>examples/osrt_python/model_configs.py</code>와 각 실행 스크립트의 기본 모델 목록에서 TDA4VM에 실제로 실행되는 항목만 정리했다.</p>
+<table>
+  <thead><tr><th style="width:15%">Runtime</th><th style="width:42%">모델 키 (config 이름)</th><th style="width:15%">Task</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="3">ONNX (기본)</td><td><code>cl-ort-resnet18-v1</code></td><td>Classification</td><td>ResNet18 (opset 9)</td></tr>
+    <tr><td><code>od-ort-ssd-lite_mobilenetv2_fpn</code></td><td>Detection</td><td>meta_arch_type 3 (ONNX SSD)</td></tr>
+    <tr><td><code>ss-ort-deeplabv3lite_mobilenetv2</code></td><td>Segmentation</td><td>am62a·am67a 제외 SoC에서 추가 → am68pa 포함</td></tr>
+    <tr><td rowspan="5">ONNX<br>(<code>--run_model_zoo</code>)</td><td><code>od-8020 … ssd_mobilenetv2_lite_512x512</code></td><td>Detection</td><td>meta_arch_type 3</td></tr>
+    <tr><td><code>od-8200 … yolox_nano_lite_416x416</code></td><td>Detection</td><td>meta_arch_type 6</td></tr>
+    <tr><td><code>od-8220 … yolox_s_lite_640x640</code></td><td>Detection</td><td>meta_arch_type 6</td></tr>
+    <tr><td><code>ss-8610 … deeplabv3plus_mobilenetv2_edgeailite_512x512</code></td><td>Segmentation</td><td>—</td></tr>
+    <tr><td><code>cl-6360 … regnetx-200mf</code></td><td>Classification</td><td>—</td></tr>
+    <tr><td rowspan="4">TFLite (기본)</td><td><code>cl-tfl-mobilenet_v1_1.0_224</code></td><td>Classification</td><td>—</td></tr>
+    <tr><td><code>ss-tfl-deeplabv3_mnv2_ade20k_float</code></td><td>Segmentation</td><td>float 모델</td></tr>
+    <tr><td><code>od-tfl-ssd_mobilenet_v2_300_float</code></td><td>Detection</td><td>float 모델</td></tr>
+    <tr><td><code>od-tfl-ssdlite_mobiledet_dsp_320x320_coco</code></td><td>Detection</td><td>meta_arch_type 1 (TFLite SSD)</td></tr>
+    <tr><td>AM69A 전용</td><td><code>cl-ort-resnet18-v1_4batch</code>, <code>*_low_latency</code></td><td>—</td><td><b>TDA4VM 대상 아님</b> (<code>SOC == "am69a"</code>일 때만 추가)</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><b class="t">예제 기본 Compile 설정은 데모용 값이다</b>
+<code>examples/osrt_python/common_utils.py</code>의 기본값은 <code>tensor_bits=8</code>, <code>accuracy_level=1</code>, <code>calibration_frames=2</code>, <code>calibration_iterations=5</code>다. 문서 권장값(calibration_frames 최소 10, 기본 20 / advanced calibration 시 50)보다 훨씬 작으므로, 과제 모델에서 정확도를 평가할 때 그대로 쓰면 안 된다.</div>
+
+<h3>2.5 TI Model Zoo 후보 모델 (edgeai-tensorlab r11.0)</h3>
+<p>edgeai-modelzoo는 TI SoC에 맞게 일부 구조를 수정해 학습한 모델 모음이며, edgeai-benchmark에서 TDA4VM을 지원 SoC로 명시한다. 이름의 <b>lite</b>는 Depthwise/Grouped Convolution 사용, Swish·HSwish 대신 ReLU 사용, SE(Squeeze-and-Excitation) 모듈 제거를 의미한다(models/vision/detection/readme.md).</p>
+<table>
+  <thead><tr><th style="width:24%">검출 모델</th><th class="c" style="width:9%">입력</th><th class="c" style="width:13%">AP[.5:.95] %</th><th class="c" style="width:10%">GigaMACS</th><th class="c" style="width:11%;white-space:nowrap">meta_arch</th><th>비고 (edgeai-benchmark configs)</th></tr></thead>
+  <tbody>
+    <tr><td>YOLOX-nano-lite</td><td class="c">416</td><td class="c">24.8</td><td class="c">1.48</td><td class="c">6</td><td>shortlisted, recommended. 저장소 예제 포함</td></tr>
+    <tr><td>YOLOX-tiny-lite</td><td class="c">416</td><td class="c">30.5</td><td class="c">3.24</td><td class="c">6</td><td>shortlisted</td></tr>
+    <tr><td>YOLOX-s-lite</td><td class="c">640</td><td class="c">38.3</td><td class="c">13.43</td><td class="c">6</td><td>shortlisted, recommended. 저장소 예제 포함</td></tr>
+    <tr><td>YOLOX-m-lite</td><td class="c">640</td><td class="c">44.4</td><td class="c">36.9</td><td class="c">6</td><td>shortlisted. 연산량이 큼</td></tr>
+    <tr><td>YOLOX-pico-lite</td><td class="c">320</td><td class="c">17.9</td><td class="c">0.50</td><td class="c">6</td><td>shortlisted, recommended. 정확도 낮음</td></tr>
+    <tr><td>MobileNetV2 + SSDLite</td><td class="c">512</td><td class="c">25.1</td><td class="c">1.67</td><td class="c">3</td><td>저장소 예제 포함</td></tr>
+    <tr><td>RegNetX200MF + SSDLite</td><td class="c">320</td><td class="c">20.7</td><td class="c">0.61</td><td class="c">3</td><td>저연산</td></tr>
+    <tr><td>EfficientDet-b0-lite</td><td class="c">512</td><td class="c">28.0</td><td class="c">—</td><td class="c">5</td><td>edgeai-mmdetection</td></tr>
+    <tr><td>YOLOv7-l-lite / YOLOv9-s-lite</td><td class="c">640</td><td class="c">45.9 / 38.3</td><td class="c">—</td><td class="c">6</td><td>YOLOv9-s는 shortlisted, YOLOv7-l은 not shortlisted</td></tr>
+    <tr><td>RTMDet-m/l-lite</td><td class="c">640</td><td class="c">—</td><td class="c">—</td><td class="c">—</td><td>shortlisted (2025 추가)</td></tr>
+    <tr><td>YOLOv5/v6/v7/v8 “-gplv3”</td><td class="c">640</td><td class="c">—</td><td class="c">—</td><td class="c">6 / 8</td><td>not shortlisted, edgeai-modelforest 경로. edgeai-yolov5·MMYOLO 저장소는 “유지보수 중단, 비권장”</td></tr>
+  </tbody>
+</table>
+<ul>
+  <li><b>영상 분기 Backbone(특징 추출부) 후보</b>: MobileNetV2/V3-lite, RegNetX-200/400/800MF, ResNet18/50 (classification 모델 목록, torchvision·edgeai-tv2 학습).</li>
+  <li><b>Transformer 계열</b>(ViT, DeiT, Swin, LeViT, DETR, Segformer)도 Model Zoo에 있으나, TIDL은 ONNX 모델만 지원하고 ONNX Runtime 최적화를 <code>ORT_DISABLE_ALL</code>로 꺼야 하며, Swin 등은 8-bit 정확도 손실이 보고되어 있다(docs/tidl_fsg_vtfr.md).</li>
+  <li>Model Zoo의 성능·정확도 보고서는 r10.1 tools와 firmware 10_01_04_00으로 생성되었다. <code>11_00_06_00</code>에서의 수치는 직접 다시 측정해야 한다.</li>
+</ul>
+
+<h3>2.6 Object Detection Meta Architecture (후처리 가속)</h3>
+<table>
+  <thead><tr><th style="width:30%">구조</th><th class="c" style="width:18%;white-space:nowrap">meta_arch_type</th><th>지원 export 경로</th></tr></thead>
+  <tbody>
+    <tr><td>TFLite SSD</td><td class="c">1</td><td>TensorFlow Object Detection API (TF1/TF2)</td></tr>
+    <tr><td>ONNX SSD</td><td class="c">3</td><td>edgeai-mmdetection</td></tr>
+    <tr><td>YOLO V3</td><td class="c">4</td><td>edgeai-mmdetection, open-mmlab mmdetection</td></tr>
+    <tr><td>RetinaNet / EfficientDet</td><td class="c">5</td><td>edgeai-mmdetection, open-mmlab mmdetection</td></tr>
+    <tr><td>YOLO-X, YOLO-V5, YOLO-V7</td><td class="c">6</td><td>edgeai-mmdetection, (MMYolo)</td></tr>
+    <tr><td>PointPillars 3D OD</td><td class="c">7</td><td>edgeai-mmdetection3d</td></tr>
+    <tr><td>YOLO-V8</td><td class="c">8</td><td>(MMYolo)</td></tr>
+  </tbody>
+</table>
+<p class="small">설정: <code>object_detection:meta_arch_type</code>, <code>object_detection:meta_layers_names_list</code>(prototxt 경로), 필요 시 <code>model_type="OD"</code>. 문서는 “지정된 export Framework로 만든 모델에서만 후처리 최적화가 지원된다”고 명시한다(docs/tidl_fsg_od_meta_arch.md).</p>
+</div>
+
+<div>
+<h3>2.7 Quantization 지원 방식 — TDA4VM(AM68PA) 기준</h3>
+<table>
+  <thead><tr><th style="width:27%">방식</th><th style="width:33%">설정</th><th class="c" style="width:10%">TDA4VM</th><th>근거·비고</th></tr></thead>
+  <tbody>
+    <tr><td>PTQ, Symmetric, non-power-of-2 / power-of-2 scale</td><td><code>advanced_options:quantization_scale_type</code> = 0 / 1</td><td class="c ok">지원</td><td>모든 SoC 지원. 기본값 0</td></tr>
+    <tr><td>PTQ, Asymmetric · Per-channel</td><td><code>quantization_scale_type = 4</code></td><td class="c ng">미지원</td><td>“all devices except TDA4VM/AM68PA” (tidl_fsg_quantization.md, Feature 비교 표)</td></tr>
+    <tr><td>TFLite full-integer 사전 양자화 모델</td><td><code>quantization_scale_type = 3</code></td><td class="c ng">미지원</td><td>“available on all devices except for TDA4VM”</td></tr>
+    <tr><td>ONNX QDQ 사전 양자화 모델</td><td><code>advanced_options:prequantized_model = 1</code></td><td class="c cond">조건부</td><td>지원 기능이나, TDA4VM은 비대칭 양자화를 지원하지 않으므로 대칭 QDQ로 만들어야 한다(검토자 판단, compile로 확인 필요)</td></tr>
+    <tr><td>QAT (Quantization Aware Training)</td><td>edgeai-modeloptimization(torchmodelopt)로 학습</td><td class="c ok">지원</td><td>문서상 “TDA4VM Specific” 항목. 정확도 손실이 0에 가깝다고 기술</td></tr>
+    <tr><td>8-bit / 16-bit</td><td><code>tensor_bits</code> = 8 / 16</td><td class="c ok">지원</td><td>8-bit가 가장 빠름. 16-bit는 연산 시간 증가</td></tr>
+    <tr><td>Mixed Precision (수동)</td><td><code>output_feature_16bit_names_list</code>, <code>params_16bit_names_list</code></td><td class="c ok">지원</td><td>정밀도 변경 가능 Layer: Convolution, BatchNorm, Pooling(Max 제외), EltWise</td></tr>
+    <tr><td>Mixed Precision (자동)</td><td><code>mixed_precision_factor</code> (예: 1.2 = 8-bit 대비 1.2배 지연 허용)</td><td class="c ok">지원</td><td>accuracy_level=1, calibration_frames/iterations=50 권장. Compile 시간 큼</td></tr>
+    <tr><td>32-bit float</td><td><code>tensor_bits = 32</code></td><td class="c cond">PC 전용</td><td>Host Emulation 디버그 전용, 보드 실행 불가</td></tr>
+    <tr><td>LUT(Look-Up Table) 가속 비선형 활성</td><td>자동</td><td class="c ok">지원</td><td>Sigmoid, HardSigmoid, GELU, TanH, Softmax, ELU (AM62A만 미지원)</td></tr>
+  </tbody>
+</table>
+<h4>Calibration(보정) 옵션 요약</h4>
+<ul>
+  <li><code>accuracy_level</code>: 0 = 단순 min/max 보정, 1 = Advanced Bias Calibration(기본), 2 = calibration 프레임 전체 min/max, 9 = 사용자 지정(<code>activation_clipping</code>, <code>weight_clipping</code>, <code>bias_calibration</code>, <code>channel_wise_quantization</code>).</li>
+  <li>Feature map(중간 출력) scale은 Simple Calibration에서 power-of-2만 지원한다. 50장 이상 사용 시 Bias Calibration 정확도 개선이 크다고 문서에 기술되어 있다.</li>
+  <li>회귀(regression, 연속값) 출력 모델(검출 box, 깊이 추정 등)은 첫·마지막 Convolution을 16-bit로 두는 것이 권장된다 — 과제의 도달시간·거리 예측 head에 해당한다.</li>
+</ul>
+
+<div class="avoid">
+<h3>2.8 Operator 지원 요약 (11_00_06_00)</h3>
+<p>ONNX 60종, TFLite 25종이 TIDL Layer로 매핑된다(전체 제약은 부록 A). 목록에 없는 Operator는 ARM에서 실행된다.</p>
+<table>
+  <thead><tr><th style="width:22%">구분</th><th>Operator (ONNX)</th></tr></thead>
+  <tbody>
+    <tr><td>C7x 가속 (주요)</td><td>Conv, ConvTranspose, Gemm, MatMul, BatchNormalization, Relu/PRelu/LeakyRelu/Clip/Sigmoid/Tanh/HardSigmoid/HardSwish/Mish/Elu, Add/Mul/Sub/Div/Max/Sum, MaxPool/AveragePool/GlobalAveragePool, Concat, Slice/Split, Reshape, Transpose, Flatten, Squeeze/Unsqueeze, Resize/Upsample, Softmax, ArgMax, Pad, DepthToSpace/SpaceToDepth, Gather, TopK, LayerNormalization, InstanceNormalization, GridSample, DeformConv, ScatterND/ScatterElements, ReduceMin/ReduceMax, Sqrt/Pow/Exp/Log/Abs/Floor/Neg, 삼각함수류, Cast(입출력단만), QuantizeLinear/DequantizeLinear(QDQ 모델)</td></tr>
+    <tr><td>단독 불가 (조합 시 가능)</td><td>ReduceMean(LayerNorm 조합 또는 optimizer로 MatMul 변환), Erf(GELU 조합), Dropout, Identity</td></tr>
+    <tr><td class="ng">11_00_06_00 미지원<br>(이후 버전에서 추가)</td><td><b>LSTM, GRU, RNN</b>, GatherElements, NonZero (11_02_16_00~) · Where / Less / Greater / Equal / Not / And / Or / Xor / IsNaN / IsInf, Ceil, Round (11_02_13_00~) · ReduceSum, Expand (11_02_05_00~) · Min, Mod (최신 Eltwise 목록)</td></tr>
+    <tr><td class="ng">목록에 없음</td><td>Einsum, CumSum, Range 등 — ARM 실행</td></tr>
+  </tbody>
+</table>
+</div>
+</div>
+
+<!-- ===================== 3. TOPIC 3 ===================== -->
+<div class="section">
+<h2>3. [Topic 3] 보드 호환성 Risk 점검</h2>
+
+<h3>3.1 보드(TDA4VM / SK-TDA4VM) 요구사항</h3>
+<table>
+  <thead><tr><th style="width:24%">자원</th><th style="width:36%">사양</th><th>모델 배치(Deployment)상 의미</th></tr></thead>
+  <tbody>
+    <tr><td>Cortex-A72 (ARM)</td><td>2코어, 최대 2.0 GHz</td><td>OSRT 실행, 미지원 Operator, 전처리·후처리, 판정 로직, 카메라·IMU 입력 처리가 모두 이 2코어를 공유</td></tr>
+    <tr><td>C7x DSP + MMA</td><td>C7x 최대 1.0 GHz, MMA 최대 8 TOPS(Tera Operations Per Second, 8-bit 기준)</td><td>TIDL Subgraph 실행. <b>1개</b>이므로 multi-core 추론 모드 없음. 8 TOPS는 8-bit 기준이며 16-bit는 처리량이 낮아짐</td></tr>
+    <tr><td>C66x DSP / R5F / GPU</td><td>C66x 2개(최대 1.35 GHz), Cortex-R5F 6개, PowerVR GPU</td><td>TIDL 대상 아님. 영상 전처리 등은 SDK의 별도 가속 경로 사용</td></tr>
+    <tr><td>메모리 (SK-TDA4VM)</td><td>LPDDR4 4 GB</td><td>모델·Artifact·카메라 버퍼 동시 적재. Memory Planning 실패 시 보드 실행 불가</td></tr>
+  </tbody>
+</table>
+<p class="src">하드웨어 사양 출처: TI TDA4VM 제품 정보(ti.com/product/TDA4VM). SK-TDA4VM 메모리 용량은 보드 수령 후 실물 확인 필요.</p>
+
+<h4>소프트웨어 측 보드 요구사항</h4>
+<table>
+  <thead><tr><th style="width:28%">요구사항</th><th>내용</th></tr></thead>
+  <tbody>
+    <tr><td>Tools ↔ Firmware 일치</td><td>보드 SDK 11.00.00.08의 C7x Firmware와 같은 release line의 tools(<code>11_00_06_00</code>)로 compile. 다른 tools 사용 시 보드 Firmware·라이브러리 갱신(<code>update_target.sh</code>)과 <code>c7x_firmware_version</code> 지정 필요</td></tr>
+    <tr><td>SoC 일치</td><td><code>tidl_tools</code>는 SoC별로 다르며 Artifact는 다른 SoC에서 사용 불가. <code>SOC=am68pa</code> 고정</td></tr>
+    <tr><td>OSRT 버전 일치</td><td>PC compile에 쓴 ORT·TFLite 버전과 보드 rootfs의 OSRT 버전이 같은 release line이어야 함 (backward compatible 패치 적용 시 보드의 wheel·라이브러리도 교체됨)</td></tr>
+    <tr><td>Graph 최적화 설정 일치</td><td>ONNX Runtime의 graph optimization level은 compile과 inference에서 같아야 함(최적화가 delegation 전에 graph를 바꾸기 때문)</td></tr>
+    <tr><td>디버그 로그</td><td>보드에서 C7x 오류 메시지를 보려면 <code>/opt/vision_apps/vision_apps_init.sh</code>로 원격 로그 출력 프로세스 실행 필요</td></tr>
+  </tbody>
+</table>
+
+<h4>SoC별 기능 차이 — TDA4VM이 다른 지점</h4>
+<table>
+  <thead><tr><th style="width:52%">기능</th><th class="c">TDA4VM (AM68PA)</th><th class="c">AM68A</th><th class="c">AM69A</th><th class="c">AM62A</th></tr></thead>
+  <tbody>
+    <tr><td>Asymmetric · Per-channel Quantization</td><td class="c ng">✗</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td></tr>
+    <tr><td>TFLite INT8 사전 양자화 모델 import</td><td class="c ng">✗</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td></tr>
+    <tr><td>LUT 가속 비선형 활성</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ok">✓</td><td class="c ng">✗</td></tr>
+    <tr><td>MatMul의 signed × unsigned 입력 조합</td><td class="c ng">✗</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+    <tr><td>Multi-DSP 추론 모드 (inference_mode 1/2)</td><td class="c ng">✗ (DSP 1개)</td><td class="c ng">✗</td><td class="c ok">✓</td><td class="c ng">✗</td></tr>
+    <tr><td>QAT 문서 항목</td><td class="c ok">TDA4VM 전용 항목</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+  </tbody>
+</table>
+<p class="src">“—”는 문서에 해당 SoC 제약 기술이 없음을 뜻한다. 출처: supported_ops_rts_versions.md(Feature 비교 표, MatMul 제약), tidl_fsg_quantization.md, tidl_fsg_multi_c7x.md (모두 11_00_06_00).</p>
+</div>
+
+<div>
+<h3>3.2 AI 모델 요구사항 (TIDL 11_00_06_00에 넣기 위한 조건)</h3>
+<table>
+  <thead><tr><th class="c" style="width:6%">ID</th><th style="width:26%">요구사항</th><th style="width:40%">세부 기준</th><th>확인 방법</th></tr></thead>
+  <tbody>
+    <tr><td class="c">M1</td><td>고정 입력 shape, batch = 1</td><td>dynamic axes 금지. Reshape는 “variable shape 미지원”, Resize는 sizes 입력 대신 scale 사용</td><td>Netron, <code>onnx.shape_inference</code></td></tr>
+    <tr><td class="c">M2</td><td>ONNX opset ≤ 19</td><td>ONNX Runtime 1.15.0(OPSET-19), onnx 1.14.0 기준 검증. LayerNormalization-17 단일 op는 optimizer 문서상 미지원 사례 존재</td><td><code>onnx.checker</code>, export 시 <code>opset_version</code> 명시</td></tr>
+    <tr><td class="c">M3</td><td>Tensor 차원 수</td><td>Conv·Pool·Gemm·MatMul·Resize·ArgMax: non-singleton 차원 ≤ 4 / 그 외 대부분 ≤ 6 / Slice 가변 입력 ≤ 4</td><td>compile 로그(debug_level ≥ 1)</td></tr>
+    <tr><td class="c">M4</td><td>지원 Operator·속성</td><td>부록 A 제약 충족. 위반 시 ARM 실행으로 Subgraph 분할(최대 16개)</td><td>Parsing 요약, <code>runtimes_visualization.svg</code></td></tr>
+    <tr><td class="c">M5</td><td>Quantization 친화 학습</td><td>모든 Convolution(특히 Depthwise) 뒤 BatchNorm, weight decay ≈ 1e-4, ReLU 계열 활성. 마지막 예측 Conv는 BN 생략 가능</td><td>학습 config 점검</td></tr>
+    <tr><td class="c">M6</td><td>회귀 출력 정밀도</td><td>도달시간·거리·속도 등 연속값 출력: 첫·마지막 Layer 16-bit 또는 <code>mixed_precision_factor</code></td><td>8/16/32-bit 출력 비교</td></tr>
+    <tr><td class="c">M7</td><td>전처리 일치</td><td>mean/scale을 학습과 동일하게. ONNX는 NCHW, TFLite는 NHWC</td><td>ARM-only 추론과 결과 비교</td></tr>
+    <tr><td class="c">M8</td><td>Calibration 데이터</td><td>실제 입력 분포(주·야간, 정지·주행, 신호 상태)를 반영한 대표 프레임 20~50장 이상</td><td>목록·버전 기록</td></tr>
+    <tr><td class="c">M9</td><td>검출 후처리 형식</td><td>meta_arch_type과 prototxt가 export Framework와 일치</td><td>compile 경고, 출력 tensor 확인</td></tr>
+    <tr><td class="c">M10</td><td>전체 Offload 목표</td><td>단일 Subgraph가 성능상 유리하고, TIDL-RT C API는 전체 Offload 모델만 실행</td><td>Artifact의 net/io bin 개수</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Risk 목록 (이 버전·이 보드에서 발생 가능한 오류)</h3>
+<p class="small">심각도: <span class="tag H">High</span> 과제 일정·구조에 직접 영향 · <span class="tag M">Medium</span> 성능·정확도 저하 또는 수정 작업 필요 · <span class="tag L">Low</span> 절차로 관리 가능.</p>
+<table>
+  <thead><tr><th class="c" style="width:5%">ID</th><th style="width:8%">심각도</th><th style="width:23%">Risk</th><th style="width:28%">증상 / 오류 형태</th><th>대응</th></tr></thead>
+  <tbody>
+    <tr><td class="c">R01</td><td><span class="tag H">High</span></td><td>Tools–Firmware 버전 불일치 (master 등 다른 tag로 compile)</td><td>보드 추론 실패, “Network version - X, Expected version - Y” 형식 오류 (11_02 debugging.md)</td><td><code>11_00_06_00</code> 고정. 패치 버전 사용 시 <code>update_target.sh</code> + <code>c7x_firmware_version</code> 지정</td></tr>
+    <tr><td class="c">R02</td><td><span class="tag H">High</span></td><td>SOC 변수 오설정 (am68a 등)</td><td>Artifact가 보드와 비호환, 추론 실패</td><td><code>SOC=am68pa</code>를 스크립트·Docker 환경에 고정, Artifact 폴더명에 SoC 표기</td></tr>
+    <tr><td class="c">R03</td><td><span class="tag H">High</span></td><td>최신 문서 기준으로 기능 판단</td><td>11_00_06_00에 없는 Operator·옵션을 전제로 설계 → compile 단계에서 ARM 배정 발견</td><td>tag 문서만 근거로 사용 (본 보고서 2.8)</td></tr>
+    <tr><td class="c">R04</td><td><span class="tag H">High</span></td><td>IMU 분기에 LSTM/GRU/RNN 사용</td><td>해당 노드 ARM 실행, Subgraph 분할, C7x↔ARM 데이터 이동으로 지연 증가</td><td>Conv(1×k)·Gemm 기반 시계열 분기 (3.5). LSTM 필요 시 SDK 업그레이드 검토(3.7)</td></tr>
+    <tr><td class="c">R05</td><td><span class="tag H">High</span></td><td>TDA4VM 미지원 양자화 설정 사용</td><td><code>quantization_scale_type=4</code>(비대칭) 또는 <code>=3</code>(TFLite INT8) 사용 → 미지원 기능이므로 compile 오류 또는 의도와 다른 양자화 결과</td><td>scale_type 0/1 사용, float 모델 + TIDL PTQ, 정확도 부족 시 QAT</td></tr>
+    <tr><td class="c">R06</td><td><span class="tag H">High</span></td><td>8-bit PTQ의 회귀 출력 정확도 저하</td><td>도달시간·거리 예측 오차 증가, 판정 경계 부근 오판</td><td>tensor_bits 32(PC) → 8 → 16 → Mixed Precision 순서로 비교, 출력단 16-bit</td></tr>
+    <tr><td class="c">R07</td><td><span class="tag M">Medium</span></td><td>미지원 Operator로 인한 ARM Fallback(대체 실행)</td><td>Subgraph 다수 생성(최대 16, 초과분 ARM), 지연 증가, Cortex-A72 부하 상승</td><td>optimizer 규칙, 구조 변경, <code>runtimes_visualization.svg</code>로 매 compile 확인</td></tr>
+    <tr><td class="c">R08</td><td><span class="tag M">Medium</span></td><td>Convolution 형태 제약</td><td>stride는 H·W 동일해야 함 → stride (1,2) 시간축 Conv 불가 가능성. Depthwise kernel 제한, kernel &gt; 7 & stride 2 불가, stride 4는 11×11만</td><td>stride 1 Conv + Pooling/GAP 조합, 일반 Conv 사용, 더미 모델로 사전 compile</td></tr>
+    <tr><td class="c">R09</td><td><span class="tag M">Medium</span></td><td>Axis(축) 제약 위반</td><td>Softmax는 W/H 축만, ArgMax는 axis=-3만, Concat은 batch 축 불가, ReduceMin/Max는 H 축만, LayerNorm은 W 축만, TopK는 H 축만, Pad는 W/H만</td><td>Fusion·head의 tensor 배치 사전 설계, optimizer의 softmax 축 변환 규칙</td></tr>
+    <tr><td class="c">R10</td><td><span class="tag M">Medium</span></td><td>MatMul 부호 조합 (TDA4VM)</td><td>signed × unsigned 입력 조합 및 signed 입력 → unsigned 출력 미지원 → attention·fusion MatMul에서 발생 가능</td><td>MatMul 두 입력의 활성 함수 통일, 가중치 상수인 Gemm 형태 사용</td></tr>
+    <tr><td class="c">R11</td><td><span class="tag M">Medium</span></td><td>Resize·Upsample 제약</td><td>scale &lt; 1, W/H scale 불일치, power-of-2 이외 scale, sizes 입력 → ARM 실행</td><td>2배 단위 upsample, <code>convert_resize_params_size_to_scale</code></td></tr>
+    <tr><td class="c">R12</td><td><span class="tag M">Medium</span></td><td>Shape 관련 export 문제</td><td>dynamic axes, Shape→Gather→Reshape 연산 사슬 → “variable shape” 미지원</td><td>고정 shape export, onnxsim, shape inference</td></tr>
+    <tr><td class="c">R13</td><td><span class="tag M">Medium</span></td><td>Sub 연산의 두 가변 입력</td><td>11_00_06_00 문서는 미지원, 11_00_08_00 문서는 “firmware ≥ 10_01_06_00이면 지원”으로 정정 → 문서 간 불일치</td><td>IMU 차분 등 Sub 사용 시 더미 compile로 확인, 필요 시 Neg+Add로 대체</td></tr>
+    <tr><td class="c">R14</td><td><span class="tag M">Medium</span></td><td>부족한 Calibration</td><td>예제 기본값(frames=2, iterations=5) 사용 시 정확도 저하</td><td>대표 데이터 20~50장, accuracy_level=1, 데이터 목록 기록</td></tr>
+    <tr><td class="c">R15</td><td><span class="tag M">Medium</span></td><td>ORT graph optimization 설정 차이</td><td>compile·inference 간 graph 불일치, Transformer는 미설정 시 offload 실패</td><td>compile·추론 모두 같은 level, Transformer는 <code>ORT_DISABLE_ALL</code></td></tr>
+    <tr><td class="c">R16</td><td><span class="tag M">Medium</span></td><td>검출 후처리 불일치</td><td>지원 export가 아닌 YOLO → NMS(Non-Maximum Suppression) 등 ARM 실행, 출력 형식 상이</td><td>edgeai-mmdetection 계열 + 제공 prototxt 사용</td></tr>
+    <tr><td class="c">R17</td><td><span class="tag M">Medium</span></td><td>Memory Planning 실패</td><td>8/16-bit compile 마지막 단계 오류, 보드 실행 불가 (32-bit는 이 단계 생략)</td><td>입력 해상도 축소, <code>high_resolution_optimization</code>, 모델 경량화</td></tr>
+    <tr><td class="c">R18</td><td><span class="tag M">Medium</span></td><td>다중 입력(영상+IMU) 처리</td><td>입력 순서 오류, 입력 type·scale 불일치, 예제 스크립트가 단일 이미지 입력만 처리</td><td>TIDL-RT는 <code>*_io_1.bin</code>의 <code>inDataName</code> 순서 사용, 별도 추론 코드 작성</td></tr>
+    <tr><td class="c">R19</td><td><span class="tag M">Medium</span></td><td>라이선스</td><td>“-gplv3” YOLO 변형, Ultralytics 원본 사용 시 공개 의무 → SW 등록 산출물과 충돌 가능</td><td>모델·학습 코드 라이선스 사전 확인 후 후보 확정</td></tr>
+    <tr><td class="c">R20</td><td><span class="tag M">Medium</span></td><td>ARM 자원 경합</td><td>Fallback Operator·IMU 전처리·후처리·판정 로직이 Cortex-A72 2코어 공유 → 전체 지연 증가</td><td>전체 Offload 목표, 보드에서 단계별 시간 측정</td></tr>
+    <tr><td class="c">R21</td><td><span class="tag L">Low</span></td><td>PC–보드 전처리 차이</td><td>float resize 등 결과 미세 차이로 layer trace bit-match 불가</td><td>raw binary 입력으로 비교, 전처리 고정</td></tr>
+    <tr><td class="c">R22</td><td><span class="tag L">Low</span></td><td>성능 수치 오해</td><td>Host Emulation 시간이나 Model Zoo(r10.1) 수치를 보드 성능으로 사용</td><td>보드에서 <code>debug_level=1</code> layer cycle 측정 후 판단</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div>
+<h3>3.4 Batch 적용 시 불일치 점검</h3>
+<p>학습 시 Batch(N &gt; 1)와 배포 시 Batch는 다르게 다뤄야 한다. TDA4VM에서 Batch를 사용할 때 맞지 않는 지점을 문서 근거와 함께 정리했다.</p>
+<table>
+  <thead><tr><th class="c" style="width:5%">ID</th><th style="width:21%">점검 항목</th><th style="width:44%">내용</th><th>영향 / 대응</th></tr></thead>
+  <tbody>
+    <tr><td class="c">B1</td><td>Multi-core Batch 모드</td><td><code>inference_mode=1</code>(High Throughput, 코어별 병렬 batch)·<code>=2</code>(Low Latency)는 DSP가 여러 개인 SoC(AM69A)용. 예제의 4-batch 모델도 <code>SOC=="am69a"</code>일 때만 실행</td><td><span class="ng">TDA4VM 해당 없음</span>. <code>inference_mode=0</code>, <code>num_cores=1</code></td></tr>
+    <tr><td class="c">B2</td><td>단일 DSP의 Batch 최적화</td><td>Default 모드에서 batch &gt; 1 모델은 내부 최적화를 하지만 “매우 작은 해상도에만 적용되고, 성능 이득이 없으면 적용되지 않음”</td><td>카메라 해상도 영상 분기는 batch 처리 시 지연이 batch 수에 비례해 증가 가능 → batch=1</td></tr>
+    <tr><td class="c">B3</td><td>Slice / Split / StridedSlice</td><td>“Only batch size = 1 is supported”</td><td>batch &gt; 1 모델에 Slice 존재 시 ARM 실행</td></tr>
+    <tr><td class="c">B4</td><td>Concat</td><td>“Not supported along the batch dimension”, axis -3/-2/-1만</td><td>Batch 축으로 시퀀스·센서를 이어 붙이는 구조 불가 → channel 축 사용</td></tr>
+    <tr><td class="c">B5</td><td>Add / Mul broadcasting</td><td>“Broadcasting on all dimensions except for the batch dimension”</td><td>[1,…] × [N,…] 형태 broadcasting 불가 → shape 사전 정렬</td></tr>
+    <tr><td class="c">B6</td><td>Gather</td><td>“Input shape of dimension higher than axis should be 1”, indices 1D</td><td>batch 차원이 1이 아니면 조건 위반 가능</td></tr>
+    <tr><td class="c">B7</td><td>BatchNormalization</td><td><code>training_mode=1</code> 미지원</td><td>export는 <code>model.eval()</code> 상태에서 수행</td></tr>
+    <tr><td class="c">B8</td><td><code>advanced_options:batch_mode</code></td><td>Batch stitching 옵션(기본 0). 최신 문서 설명: 일부 Layer에서 가장 바깥 non-singleton 차원을 width 차원으로 이어 붙여 성능 개선</td><td>11_00_06_00 문서에는 한 줄 설명만 존재 → 사용 시 출력 비교 필수</td></tr>
+    <tr><td class="c">B9</td><td>optimizer <code>split_batch_dim_to_parallel_input_branches</code></td><td>batch 차원을 병렬 branch로 분리. 문서상 “experimental, early stage”, 시작·끝 노드 이름 수동 지정 필요</td><td>기본 경로로 사용하지 않음</td></tr>
+    <tr><td class="c">B10</td><td>Dynamic batch export</td><td>batch를 dynamic axis로 export하면 shape 미확정 → Reshape·Resize 제약 위반</td><td>배포용은 batch=1 고정 export (학습 batch와 별개)</td></tr>
+    <tr><td class="c">B11</td><td>시간축 배치</td><td>IMU window(T 샘플)나 다중 프레임을 batch 축에 두면 B3~B6 제약에 걸림</td><td>IMU: [1, C, 1, T] (T를 W축), 다중 프레임: channel 축 stack</td></tr>
+    <tr><td class="c">B12</td><td>처리량 확보 방식</td><td>TDA4VM에서는 batch 대신 프레임 단위 순차 추론 + 애플리케이션 단 pipeline이 적합</td><td>입력 수집·전처리(ARM)와 추론(C7x)을 겹쳐 실행</td></tr>
+  </tbody>
+</table>
+<p class="src">출처: tidl_fsg_multi_c7x.md, supported_ops_rts_versions.md, examples/osrt_python/README.md(batch_mode), osrt-model-tools/.../tidl_onnx_model_optimizer/README.md (11_00_06_00) · model_compilation.md, multi_c7x.md (11_02, batch_mode 설명).</p>
+
+<h3>3.5 과제 모델(영상·IMU 융합)에 적용한 설계 기준</h3>
+<figure>
+<svg viewBox="0 0 720 210" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Multimodal model mapping to TIDL">
+  <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f63b0"/></marker></defs>
+  <g font-size="10.5">
+    <rect x="6" y="18" width="118" height="46" rx="5" fill="#f3f6fb" stroke="#2f63b0"/>
+    <text x="65" y="37" text-anchor="middle" font-weight="700" fill="#1f3f73">영상 입력</text>
+    <text x="65" y="54" text-anchor="middle" class="mono" font-size="9.5" fill="#1c2330">[1, 3, H, W] uint8</text>
+    <rect x="146" y="18" width="190" height="46" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="241" y="37" text-anchor="middle" font-weight="700" fill="#1f3f73">Backbone (lite)</text>
+    <text x="241" y="54" text-anchor="middle" fill="#1c2330">Conv + BN + ReLU (Model Zoo)</text>
+    <rect x="358" y="18" width="92" height="46" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="404" y="37" text-anchor="middle" font-weight="700" fill="#1f3f73">GAP</text>
+    <text x="404" y="54" text-anchor="middle" class="mono" font-size="9" fill="#1c2330">[1, C1, 1, 1]</text>
+    <rect x="6" y="122" width="118" height="46" rx="5" fill="#f3f6fb" stroke="#2f63b0"/>
+    <text x="65" y="141" text-anchor="middle" font-weight="700" fill="#1f3f73">IMU 입력</text>
+    <text x="65" y="158" text-anchor="middle" class="mono" font-size="9.5" fill="#1c2330">[1, 6, 1, T] float</text>
+    <rect x="146" y="122" width="190" height="46" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="241" y="141" text-anchor="middle" font-weight="700" fill="#1f3f73">Temporal Conv</text>
+    <text x="241" y="158" text-anchor="middle" fill="#1c2330">Conv(1×k, stride 1) + BN + ReLU</text>
+    <rect x="358" y="122" width="92" height="46" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="404" y="141" text-anchor="middle" font-weight="700" fill="#1f3f73">GAP</text>
+    <text x="404" y="158" text-anchor="middle" class="mono" font-size="9" fill="#1c2330">[1, C2, 1, 1]</text>
+    <rect x="474" y="66" width="100" height="54" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="524" y="88" text-anchor="middle" font-weight="700" fill="#1f3f73">Concat</text>
+    <text x="524" y="106" text-anchor="middle" fill="#1c2330">axis = 1 (C)</text>
+    <rect x="596" y="66" width="118" height="54" rx="5" fill="#e8edf6" stroke="#1f3f73"/>
+    <text x="655" y="88" text-anchor="middle" font-weight="700" fill="#1f3f73">Gemm Head</text>
+    <text x="655" y="106" text-anchor="middle" fill="#1c2330">출력단 16-bit</text>
+    <rect x="146" y="178" width="190" height="26" rx="5" fill="#fdecea" stroke="#b42318" stroke-dasharray="4 3"/>
+    <text x="241" y="195" text-anchor="middle" fill="#b42318">LSTM / GRU → ARM 실행 (회피)</text>
+    <rect x="596" y="136" width="118" height="40" rx="5" fill="#ffffff" stroke="#8a95a8"/>
+    <text x="655" y="152" text-anchor="middle" font-size="9.5" fill="#1c2330">주행 상태 · 도달시간</text>
+    <text x="655" y="167" text-anchor="middle" font-size="9.5" fill="#1c2330">(ARM에서 판정 로직)</text>
+  </g>
+  <g stroke="#2f63b0" stroke-width="1.5" fill="none">
+    <line x1="124" y1="41" x2="144" y2="41" marker-end="url(#ar2)"/>
+    <line x1="336" y1="41" x2="356" y2="41" marker-end="url(#ar2)"/>
+    <line x1="124" y1="145" x2="144" y2="145" marker-end="url(#ar2)"/>
+    <line x1="336" y1="145" x2="356" y2="145" marker-end="url(#ar2)"/>
+    <path d="M450,41 C465,41 462,80 472,84" marker-end="url(#ar2)"/>
+    <path d="M450,145 C465,145 462,106 472,102" marker-end="url(#ar2)"/>
+    <line x1="574" y1="93" x2="594" y2="93" marker-end="url(#ar2)"/>
+    <line x1="655" y1="120" x2="655" y2="134" marker-end="url(#ar2)"/>
+  </g>
+</svg>
+<figcaption>그림 2. 11_00_06_00 지원 Operator만으로 구성한 영상·IMU 융합 모델 예시 (검토자 제안, 더미 모델 compile로 검증 필요)</figcaption>
+</figure>
+<table>
+  <thead><tr><th style="width:15%">모듈</th><th style="width:38%">권장 구성</th><th style="width:25%">피할 구성</th><th>근거</th></tr></thead>
+  <tbody>
+    <tr><td>영상 Backbone</td><td>Model Zoo lite backbone(MobileNetV2-lite, RegNetX, YOLOX-lite backbone), Conv 뒤 BN, ReLU</td><td>Swish/HSwish 다용, SE 모듈, 큰 kernel Depthwise</td><td>lite 정의, Depthwise kernel 제약</td></tr>
+    <tr><td>신호 인식 (검출)</td><td>YOLOX-nano/tiny/s-lite, 고정 입력 해상도, meta_arch_type 6 + prototxt</td><td>keep_ratio 가변 resize, 구조 변경 없는 Ultralytics 원본</td><td>od_meta_arch.md, detection readme</td></tr>
+    <tr><td>IMU 분기</td><td>[1, 6, 1, T] 배치 후 Conv(1×k, stride 1)+BN+ReLU 반복, 또는 Flatten → Gemm(MLP)</td><td>LSTM/GRU/RNN, stride (1,2), 가변 T</td><td>Operator 목록, Conv stride 제약</td></tr>
+    <tr><td>Fusion</td><td>각 분기 GAP → [1, C, 1, 1] → Concat(axis=1) → Gemm</td><td>batch 축 Concat·broadcast, signed×unsigned MatMul</td><td>Concat·Eltwise·MatMul 제약</td></tr>
+    <tr><td>출력 Head</td><td>Gemm 출력, Sigmoid/Tanh(LUT 가속) 사용 가능, 마지막 Layer 16-bit</td><td>ArgMax(axis≠-3), Softmax(C축)</td><td>Quantization 가이드, Softmax 제약</td></tr>
+    <tr><td>Runtime</td><td>ONNX Runtime + TIDL EP, 전체 Offload 목표, opt level 고정</td><td>Compile·추론 간 설정 불일치</td><td>tidl_osr_debug.md</td></tr>
+  </tbody>
+</table>
+<div class="callout note"><b class="t">검증이 필요한 가정</b>
+Conv(1×k) 비정사각 kernel은 일반 Convolution 제약 목록에 금지 조항이 없으나 명시적 검증 항목도 아니다. 또한 Pooling의 검증 kernel은 3×3·2×2·1×1이므로 1×2 같은 시간축 Pooling은 확인되지 않았다. GAP는 H×W ≤ 1024에서 그대로 쓰고, 초과 시 <code>convert_large_global_avg_pooling_to_matmul</code> 규칙을 적용한다. 본 구조는 실제 학습 전에 무작위 가중치의 더미 ONNX로 compile하여 전체 Offload 여부를 먼저 확인한다.</div>
+</div>
+
+<div>
+<h3>3.6 호환성 검증 절차</h3>
+<p>docs/tidl_osr_debug.md의 권장 순서를 과제 모델에 맞게 정리했다. 각 단계 결과는 실험 기록(모델 버전, compile option, calibration 데이터 목록, tools tag, SOC, ORT optimization level)과 함께 보관한다.</p>
+<ol class="steps">
+  <li><b>ARM-only 기준 결과 확보</b> — TIDL 없이 <code>CPUExecutionProvider</code>(예제는 <code>-d</code> 옵션)로 추론해 기능상 정답 출력을 만든다.</li>
+  <li><b>Compile 및 Offload 확인</b> — <code>debug_level=1~2</code>로 compile 후 Parsing 요약, <code>tempDir/runtimes_visualization.svg</code>, Subgraph별 <code>*_tidl_net.bin.svg</code>로 ARM 배정 노드와 원인(마우스 hover 정보)을 확인한다.</li>
+  <li><b>32-bit 비교 (PC)</b> — <code>tensor_bits=32</code>로 Host Emulation하여 1번 결과와 같으면 graph 변환은 정상이다(양자화 영향 배제).</li>
+  <li><b>8-bit PTQ</b> — <code>accuracy_level=1</code>, calibration_frames 20~50으로 compile 후 정확도를 비교한다.</li>
+  <li><b>16-bit · Mixed Precision</b> — 8-bit 정확도가 부족하면 16-bit로 상한을 확인하고, 수동(<code>output_feature_16bit_names_list</code>) 또는 자동(<code>mixed_precision_factor</code>)으로 조정한다. Layer별 오차는 <code>debug_level=4</code> trace로 비교한다.</li>
+  <li><b>보드 성능 측정</b> — SK-TDA4VM에서 <code>debug_level=1</code>로 layer cycle을 받아 병목 Layer를 찾는다(C7x 1 GHz 기준 cycle ÷ 10<sup>6</sup> = ms).</li>
+  <li><b>PC–보드 일치 확인</b> — 양쪽에서 <code>debug_level=3</code> fixed-point trace(<code>/tmp</code>)를 생성해 비교한다. 첫 불일치 Layer가 보고 대상이다(<code>*.layer_info.txt</code>로 dataId ↔ Layer 이름 대응).</li>
+</ol>
+
+<h3>3.7 버전 선택지 비교 (보드 SDK 11.00 유지 시)</h3>
+<table>
+  <thead><tr><th style="width:20%">Tools tag</th><th style="width:20%">호환 유형</th><th style="width:26%">필요 작업</th><th>변화</th></tr></thead>
+  <tbody>
+    <tr><td><code>11_00_06_00</code></td><td>Default</td><td>없음</td><td><b>현재 기준</b></td></tr>
+    <tr><td><code>11_00_08_00</code></td><td>Patch (default 호환)</td><td>보드 Firmware·라이브러리 갱신, <code>c7x_firmware_version="11_00_08_00"</code></td><td>Depthwise kernel 목록 정정(1x3s1, 5x5s1 포함), Sub 가변 입력 조건 정정 등</td></tr>
+    <tr><td><code>11_01_05/07_00</code>, <code>11_02_05/07/13_00</code></td><td>Patch (SDK 11.00 backward 호환)</td><td><code>update_target.sh</code>로 Firmware·라이브러리·OSRT 교체</td><td>ReduceSum·Expand(11_02_05~), 비교·논리 연산·Ceil·Round(11_02_13~) 추가. <b>11_02_13_00은 ONNX Runtime 1.23.0(OPSET-21)</b>으로 변경되어 PC·보드 환경 동시 변경. LSTM/GRU 없음</td></tr>
+    <tr><td><code>11_02_16_00</code> 이상</td><td>SDK 11.02.01 이상 Default (<code>11_02_17_00</code>은 SDK 11.01·11.02.00에 backward 호환)</td><td>보드 SDK 자체 변경 (최소 11.01)</td><td>LSTM/GRU/RNN 포함. SDK 11.00 대상 패치(<code>11_02_17_00</code>, <code>11_02_21_00</code>)는 J784S4 ADAS SDK 한정</td></tr>
+  </tbody>
+</table>
+<div class="callout"><b class="t">권장</b>
+1주차~기준 모델 검증(10/8~10/15)까지는 <code>11_00_06_00</code>을 유지한다. 필요한 Operator가 이 버전에 없는 경우에만 위 표의 버전 변경을 팀 결정 사항으로 올린다. 버전 변경은 PC Docker 환경과 보드 Firmware를 함께 바꾸므로, 변경 시점 이전에 생성한 Artifact는 모두 재생성해야 한다.</div>
+</div>
+
+<!-- ===================== 4. CONCLUSION ===================== -->
+<div class="section">
+<h2>4. 결론 및 다음 작업</h2>
+<h3>4.1 결론</h3>
+<ul>
+  <li><b>Runtime·Framework</b>: PyTorch 학습 → ONNX(opset ≤ 19, 고정 shape, batch=1) → ONNX Runtime + TIDL EP를 기본 경로로 한다. TensorFlow를 쓰는 경우 float TFLite → TFLite Runtime 경로를 쓰되 INT8 TFLite import는 TDA4VM에서 쓸 수 없다.</li>
+  <li><b>Quantization</b>: Symmetric PTQ 8-bit를 기본으로 하고, 회귀 출력은 16-bit·Mixed Precision으로 보완한다. 정확도 목표 미달 시 TDA4VM 대상 QAT를 검토한다.</li>
+  <li><b>모델 구조</b>: 영상 분기는 TI Model Zoo lite 구조, 신호 인식은 YOLOX-lite 계열, IMU 분기는 LSTM/GRU 대신 Conv(1×k)·Gemm, Fusion은 channel 축 Concat으로 구성하면 11_00_06_00 지원 Operator 안에서 전체 Offload를 목표로 할 수 있다.</li>
+  <li><b>Batch</b>: TDA4VM에서는 batch=1 배포가 기준이며, 시간·센서 정보는 batch가 아닌 W/C 축으로 표현한다.</li>
+  <li><b>버전</b>: Tools·Firmware·SoC·OSRT 버전을 한 묶음으로 기록·고정하는 것이 가장 큰 오류 원인을 제거한다.</li>
+</ul>
+<h3>4.2 다음 작업 (제안)</h3>
+<table>
+  <thead><tr><th class="c" style="width:6%">No</th><th style="width:48%">작업</th><th style="width:22%">완료 기준</th><th>관련 Risk</th></tr></thead>
+  <tbody>
+    <tr><td class="c">1</td><td>11_00_06_00에서 ONNX 기본 예제 3종 + <code>--run_model_zoo</code>의 YOLOX-nano/s-lite compile·PC 추론</td><td>Artifact·출력 이미지 생성, 설정 기록</td><td>R01–R03</td></tr>
+    <tr><td class="c">2</td><td>IMU 분기 후보(Temporal Conv, MLP, 비교용 GRU) 더미 ONNX 생성 → compile</td><td>Offload 비율·Subgraph 수 비교표</td><td>R04, R08, R13</td></tr>
+    <tr><td class="c">3</td><td>영상+IMU 2-input Fusion 더미 모델 compile, 커스텀 추론 스크립트 작성</td><td>단일 Subgraph 여부, 입력 순서 확인</td><td>R09, R10, R18</td></tr>
+    <tr><td class="c">4</td><td>tensor_bits 32/8/16 비교 실험 템플릿 작성 (회귀 출력 오차 지표 포함)</td><td>비교 스크립트·결과 표 양식</td><td>R05, R06, R14</td></tr>
+    <tr><td class="c">5</td><td>Calibration 데이터 선정 기준 정의 (주·야간, 신호 상태, 주행 상태)</td><td>데이터 목록 문서</td><td>R14</td></tr>
+    <tr><td class="c">6</td><td>후보 모델·학습 코드 라이선스 확인</td><td>후보별 라이선스 표</td><td>R19</td></tr>
+    <tr><td class="c">7</td><td>보드 수령 후 SDK·Firmware 버전 확인, <code>debug_level=1</code> layer cycle 측정</td><td>보드 성능 기준표</td><td>R01, R20, R22</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ===================== APPENDIX A ===================== -->
+<div class="section">
+<h2>부록 A. 11_00_06_00 Operator 지원 목록 (ONNX)</h2>
+<p class="small">출처: docs/supported_ops_rts_versions.md (tag 11_00_06_00). “dim ≤ n”은 non-singleton 가변 입력 차원 수 제한. 표기된 제약 외 조건은 원문 확인.</p>
+<table>
+  <thead><tr><th class="c" style="width:5%">No</th><th style="width:22%">ONNX Operator</th><th style="width:20%">TIDL Layer</th><th>핵심 제약</th></tr></thead>
+  <tbody>
+    <tr><td class="c">1</td><td>Conv</td><td>Convolution</td><td>가변 입력 1개, dim ≤ 4, stride H=W, kernel &gt; 7 & stride 2 불가, Depthwise는 3x3s1·3x3s2·5x5·7x7s1·7x7s2 (11_00_08 문서: 1x3s1·3x3s1·3x3s2·5x5s1·5x5s2·7x7s1·7x7s2), stride 4는 11x11만, 입력 폭 &lt; max(pad L, pad R) 불가</td></tr>
+    <tr><td class="c">2</td><td>AveragePool / GlobalAveragePool / MaxPool</td><td>Pooling</td><td>dim ≤ 4, dilation 1, storage_order 0, 검증 kernel 3x3·2x2·1x1(stride 1/2), GAP H×W &gt; 1024 → optimizer 규칙</td></tr>
+    <tr><td class="c">3</td><td>Relu</td><td>ReLU</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">4</td><td>PRelu</td><td>PReLU</td><td>dim ≤ 6, 가변 slope 불가</td></tr>
+    <tr><td class="c">5</td><td>Sum / Add / Mul / Div / Sub / Max</td><td>EltWise</td><td>입력 2개, dim ≤ 6, broadcast 가능(batch 축 제외), Sub 두 입력 모두 가변 불가(11_00_08 문서 정정 참조), 상수 tensor는 shape inference 필요, 1D 벡터는 channel 또는 width와 일치</td></tr>
+    <tr><td class="c">6</td><td>Gemm</td><td>InnerProduct</td><td>dim ≤ 4, transA=0·alpha=1·beta=1, bias는 [N] 또는 [1,N] (아니면 MatMul+Add 변환)</td></tr>
+    <tr><td class="c">7</td><td>MatMul</td><td>InnerProduct</td><td>dim ≤ 4, signed 입력→unsigned 출력 불가, <b>signed×unsigned 입력 조합 TDA4VM 불가</b></td></tr>
+    <tr><td class="c">8</td><td>Softmax</td><td>SoftMax</td><td>dim ≤ 6, width·height 축만</td></tr>
+    <tr><td class="c">9</td><td>BatchNormalization</td><td>BatchNorm</td><td>training_mode=1 불가, dim ≤ 6</td></tr>
+    <tr><td class="c">10</td><td>ConvTranspose</td><td>Deconv2D</td><td>4x4·2x2 kernel & stride 2만, group=1, Resize 대체 권장</td></tr>
+    <tr><td class="c">11</td><td>Concat</td><td>Concat</td><td>axis -3/-2/-1만, batch 축 불가, dim ≤ 6</td></tr>
+    <tr><td class="c">12</td><td>Slice / Split</td><td>Slice</td><td>입력 4개(가변 1 + 상수 1D 3), 가변 dim ≤ 4, batch=1만, stride ≠ 1 단독 불가(Patch Merging 제외)</td></tr>
+    <tr><td class="c">13</td><td>Flatten</td><td>Flatten</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">14</td><td>Dropout</td><td>DropOut</td><td>단독 불가</td></tr>
+    <tr><td class="c">15</td><td>ArgMax</td><td>ArgMax</td><td>keepdims=1, axis=-3만, dim ≤ 4, select_last_index=0</td></tr>
+    <tr><td class="c">16</td><td>Upsample / Resize</td><td>Resize</td><td>dim ≤ 4, nearest·linear, W/H 축만, scale ≥ 1, W=H scale, power-of-2 scale, antialias=0, coordinate mode는 half_pixel·pytorch_half_pixel·asymmetric 일부 조합만</td></tr>
+    <tr><td class="c">17</td><td>DepthToSpace</td><td>DepthToSpace</td><td>4D, channel이 block² 배수</td></tr>
+    <tr><td class="c">18</td><td>Sigmoid</td><td>Sigmoid</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">19</td><td>Pad</td><td>Pad</td><td>최대 6차원, constant mode만, W/H 축만</td></tr>
+    <tr><td class="c">20</td><td>ReduceMin / ReduceMax</td><td>Reduce</td><td>height 축만, keepdims=1</td></tr>
+    <tr><td class="c">21</td><td>ScatterND / ScatterElements</td><td>ScatterElements</td><td>dim ≤ 4, width 축만, updates channel 1, data는 zero 상수, reduction 제한</td></tr>
+    <tr><td class="c">22–25</td><td>Squeeze, Tanh, HardSigmoid, Elu</td><td>각 Layer</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">26</td><td>Reshape</td><td>Reshape</td><td>가변 shape 불가, allowzero 불가, 입출력 volume 동일, dim ≤ 6</td></tr>
+    <tr><td class="c">27</td><td>Gather</td><td>Gather</td><td>입력 &gt; 1D, data 상수 불가(indices만 상수 가능), axis보다 높은 차원 shape 1, indices 1D</td></tr>
+    <tr><td class="c">28</td><td>Transpose</td><td>Transpose</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">29</td><td>LayerNormalization</td><td>LayerNorm</td><td>width 축만, scale·bias는 [N] 또는 [1,N]</td></tr>
+    <tr><td class="c">30</td><td>GridSample</td><td>GridSample</td><td>nearest·bilinear, zero padding, 2D grid</td></tr>
+    <tr><td class="c">31</td><td>TopK</td><td>TopK</td><td>sorted=1, K는 initializer, height 축만, 같은 값 순서는 PC·보드 간 다를 수 있음</td></tr>
+    <tr><td class="c">32</td><td>DeformConv</td><td>DeformableConv</td><td>3x3s1만</td></tr>
+    <tr><td class="c">33</td><td>Clip</td><td>Clip</td><td>min ≤ 0, max &gt; 0</td></tr>
+    <tr><td class="c">34</td><td>LeakyRelu</td><td>LeakyRelu</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">35</td><td>Erf / Identity</td><td>Identity</td><td>단독 불가 (Erf는 GELU 조합으로 지원)</td></tr>
+    <tr><td class="c">36–37</td><td>DequantizeLinear / QuantizeLinear</td><td>Dequantize / Quantize</td><td>axis=1만, ONNX QDQ 모델에서만</td></tr>
+    <tr><td class="c">38</td><td>Sqrt</td><td>Sqrt</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">39</td><td>ReduceMean</td><td>ReduceMean</td><td>단독 불가 → LayerNorm 조합 또는 optimizer(<code>convert_reducemean_to_matmul</code>)</td></tr>
+    <tr><td class="c">40</td><td>Pow</td><td>Pow</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">41</td><td>Cast</td><td>Cast</td><td>네트워크 입력·출력 terminal 노드에서만</td></tr>
+    <tr><td class="c">42–46</td><td>Asin, Asinh, HardSwish, Mish, Log</td><td>각 Layer</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">47</td><td>Unsqueeze</td><td>Unsqueeze</td><td>출력 차원 ≤ 6</td></tr>
+    <tr><td class="c">48–52</td><td>Abs, Floor, Exp, Sin, InstanceNormalization</td><td>각 Layer</td><td>dim ≤ 6</td></tr>
+    <tr><td class="c">53</td><td>SpaceToDepth</td><td>SpaceToDepth</td><td>4D, H·W가 block 배수</td></tr>
+    <tr><td class="c">54–60</td><td>Acos, Atan, Sinh, Neg, Cos, Cosh, Tan</td><td>각 Layer</td><td>dim ≤ 6</td></tr>
+  </tbody>
+</table>
+<h4>TFLite Operator (25종) 요약</h4>
+<p class="small">Conv2d/DepthwiseConv2d, AveragePool2d/Mean/MaxPool2d, Prelu/Relu, Mul/Sub/Add/Div, FullyConnected, Softmax, Concatenation(batch 축 불가), StridedSlice(batch=1), ArgMax(axis=-3), ResizeBilinear/ResizeNearestNeighbor, DepthToSpace, Logistic, Pad(8개 pad 값), Quantize/Dequantize, Squeeze, Tanh, Elu, Reshape, Transpose, LeakyRelu, BatchToSpaceNd, SpaceToBatchNd, Pack, Cast, SpaceToDepth. — LayerNorm·GELU·LSTM 매핑 없음(Transformer는 ONNX만 지원).</p>
+</div>
+
+<!-- ===================== APPENDIX B ===================== -->
+<div class="section">
+<h2>부록 B. 주요 Compile / Inference Option (11_00_06_00)</h2>
+<table>
+  <thead><tr><th style="width:34%">Option</th><th style="width:20%">값 (기본값)</th><th>설명 · TDA4VM 관련 사항</th></tr></thead>
+  <tbody>
+    <tr><td><code>tidl_tools_path</code>, <code>artifacts_folder</code></td><td>필수</td><td>Tools 경로(<code>${TIDL_TOOLS_PATH}</code>), Artifact 저장·로드 경로</td></tr>
+    <tr><td><code>tensor_bits</code></td><td>8, 16, 32 (8)</td><td>32는 PC 전용</td></tr>
+    <tr><td><code>debug_level</code></td><td>0–6 (0)</td><td>1: layer cycle(보드), 3: fixed-point trace, 4: fixed+float trace</td></tr>
+    <tr><td><code>max_num_subgraphs</code></td><td>≤ 16 (16)</td><td>초과분은 ARM 실행</td></tr>
+    <tr><td><code>accuracy_level</code></td><td>0, 1, 2, 9 (1)</td><td>9는 세부 옵션 직접 지정</td></tr>
+    <tr><td><code>advanced_options:calibration_frames</code> / <code>calibration_iterations</code></td><td>(20) / (50)</td><td>최소 10 권장, 예제 스크립트는 2 / 5로 설정되어 있음</td></tr>
+    <tr><td><code>advanced_options:output_feature_16bit_names_list</code>, <code>params_16bit_names_list</code></td><td>"" </td><td>수동 Mixed Precision</td></tr>
+    <tr><td><code>advanced_options:mixed_precision_factor</code></td><td>&gt; 1 (-1)</td><td>자동 Mixed Precision</td></tr>
+    <tr><td><code>advanced_options:quantization_scale_type</code></td><td>0, 1, 3, 4 (0)</td><td><b>TDA4VM은 0/1만</b> (3: TFLite INT8, 4: 비대칭 — 미지원)</td></tr>
+    <tr><td><code>advanced_options:prequantized_model</code></td><td>0/1 (0)</td><td>ONNX QDQ 모델 scale 사용</td></tr>
+    <tr><td><code>advanced_options:high_resolution_optimization</code></td><td>0/1 (0)</td><td>고해상도 모델 성능 최적화</td></tr>
+    <tr><td><code>advanced_options:add_data_convert_ops</code></td><td>0–3 (0)</td><td>입출력 layout·type 변환을 DSP에서 수행(실험적). TIDL-RT C API 사용 시 3 필요</td></tr>
+    <tr><td><code>advanced_options:c7x_firmware_version</code></td><td>("11_00_00_00")</td><td>패치 firmware 사용 시 명시</td></tr>
+    <tr><td><code>advanced_options:batch_mode</code></td><td>0/1 (0)</td><td>Batch stitching (3.4 B8)</td></tr>
+    <tr><td><code>advanced_options:inference_mode</code>, <code>num_cores</code>, <code>core_number</code>, <code>core_start_idx</code></td><td>(0), (1)</td><td>Multi-DSP SoC 전용 — TDA4VM은 기본값 유지</td></tr>
+    <tr><td><code>deny_list:layer_type</code> / <code>deny_list:layer_name</code> / <code>allow_list:layer_name</code></td><td>문자열</td><td>Offload 강제 제외·포함 (allow·deny 동시 사용 불가)</td></tr>
+    <tr><td><code>object_detection:meta_arch_type</code>, <code>object_detection:meta_layers_names_list</code>, <code>model_type</code></td><td>(-1), (""), ("")</td><td>검출 후처리 가속</td></tr>
+    <tr><td><code>advanced_options:max_num_subgraph_nodes</code></td><td>(864)</td><td>Subgraph 당 최대 노드 수</td></tr>
+    <tr><td><code>advanced_options:enable_custom_layers</code>, <code>custom_layers_names_list</code></td><td>(0), ("")</td><td>C7x 사용자 Layer — 별도 add-on 패키지·Firmware 빌드 필요</td></tr>
+  </tbody>
+</table>
+
+<div class="avoid"><h2 style="margin-top:18px">부록 C. 참고 문서</h2>
+<table>
+  <thead><tr><th style="width:30%">저장소 / 버전</th><th>파일</th></tr></thead>
+  <tbody>
+    <tr><td>edgeai-tidl-tools @ 11_00_06_00</td><td>README.md · docs/supported_ops_rts_versions.md · docs/version_compatibility_table.md · docs/tidl_fsg_quantization.md · docs/tidl_fsg_multi_c7x.md · docs/tidl_fsg_od_meta_arch.md · docs/tidl_fsg_vtfr.md · docs/tidl_fsg_io_tensors_format.md · docs/tidl_osr_debug.md · docs/custom_model_evaluation.md · docs/advanced_setup.md · docs/update_target.md · examples/osrt_python/README.md · examples/osrt_python/model_configs.py · examples/osrt_python/common_utils.py · examples/osrt_python/ort/onnxrt_ep.py · examples/osrt_python/tfl/tflrt_delegate.py · examples/tidlrt_cpp/README.md · osrt-model-tools/osrt_model_tools/onnx_tools/tidl_onnx_model_optimizer/README.md · setup.sh · requirements_pc.txt</td></tr>
+    <tr><td>edgeai-tidl-tools @ 11_00_08_00</td><td>docs/supported_ops_rts_versions.md · docs/version_compatibility_table.md (정정 사항 비교)</td></tr>
+    <tr><td>edgeai-tidl-tools @ 11_01_xx · 11_02_xx (master 11_02_20_00)</td><td>docs/operators.md · docs/sdk_version_compatibility_table.md · docs/debugging.md · docs/faq.md · docs/quantization.md · docs/multi_c7x.md · docs/model_compilation.md · docs/tidlrt.md</td></tr>
+    <tr><td>edgeai-tensorlab @ r11.0</td><td>edgeai-modelzoo/README.md · edgeai-modelzoo/models/configs.yaml · edgeai-modelzoo/models/vision/detection/readme.md · edgeai-benchmark/README.md · edgeai-benchmark/configs/detection.py · detection_additional.py</td></tr>
+    <tr><td>Texas Instruments</td><td>TDA4VM 제품 정보 (ti.com/product/TDA4VM)</td></tr>
+  </tbody>
+</table>
+<p class="src">GitHub: https://github.com/TexasInstruments/edgeai-tidl-tools · https://github.com/TexasInstruments/edgeai-tensorlab</p></div>
+</div>
+
+</body>
+</html>
